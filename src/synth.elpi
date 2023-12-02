@@ -1,0 +1,21 @@
+accumulate "syntax".
+accumulate "sem".
+
+type synth tm -> tm -> o.
+synth (uni A B) (lam E) :-
+    pi x\ synth A x => synth (B x) (E x).
+synth (exi A B) (gen X Y) :-
+    synth (B X) Y,
+    synth A X.
+synth two tt.
+synth two ff.
+synth (eql X X) (rfl X X).
+synth (neq X Y) (nrf X Y) :-
+    not (X = Y).
+synth (if C A B) (if C X Y) :-
+    synth two C,
+    synth A X,
+    synth B Y.
+synth A E :-
+    step A B,
+    synth B E.
