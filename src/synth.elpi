@@ -53,8 +53,7 @@ synth (neg (eql X Y)) E :-
     synth (neq X Y) E.
 synth (neg (neq X Y)) E :-
     synth (eql X Y) E.
-
-type run string -> tm -> o.
-run S E :-
-    runparse prec3 S A,
-    synth A E.
+synth (pr1 (gen A B)) X :-
+    synth A X.
+synth (pr2 (gen A B)) Y :-
+    synth (B A) Y.

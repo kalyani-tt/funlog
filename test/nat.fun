@@ -1,3 +1,3 @@
-def unit := uni (a : typ). a -> a
+unit := for(a : *)(x : a). a
 
-fix nat := exi (b : bool). if b nat unit
+nat := exi(b : bool). if b nat unit

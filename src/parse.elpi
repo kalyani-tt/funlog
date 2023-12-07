@@ -16,6 +16,10 @@ type str string -> parser int.
 str S I O 0 :-
     splitstring {calc (size S)} I S O.
 
+type anychar parser string.
+anychar I O C :-
+    splitstring 1 I C O.
+
 type strg string -> parser string.
 strg S I O S :-
     splitstring {calc (size S)} I S O.
@@ -75,15 +79,25 @@ concat (C :: CS) R :-
     concat CS S,
     R is C ^ S.
 
+alnumchar I O C :- choose [strg "a", strg "b", strg "c", strg "d", strg "e", strg "f", strg "g", strg "h", strg "i", strg "j", strg "k", strg "l", strg "m", strg "n", strg "o", strg "p", strg "q", strg "r", strg "s", strg "t", strg "u", strg "v", strg "w", strg "x", strg "y", strg "z", strg "A", strg "B", strg "C", strg "D", strg "E", strg "F", strg "G", strg "H", strg "I", strg "J", strg "K", strg "L", strg "M", strg "N", strg "O", strg "P", strg "Q", strg "R", strg "S", strg "T", strg "U", strg "V", strg "W", strg "X", strg "Y", strg "Z", strg "0", strg "1", strg "2", strg "3", strg "4", strg "5", strg "6", strg "7", strg "8", strg "9"] I O C.
+
+type keyword string -> o.
+keyword "for".
+keyword "exi".
+keyword "lam".
+keyword "if".
+
 type alphanum parser string.
 alphanum I O E :-
-    some (choose [strg "a", strg "b", strg "c", strg "d", strg "e", strg "f", strg "g", strg "h", strg "i", strg "j", strg "k", strg "l", strg "m", strg "n", strg "o", strg "p", strg "q", strg "r", strg "s", strg "t", strg "u", strg "v", strg "w", strg "x", strg "y", strg "z", strg "A", strg "B", strg "C", strg "D", strg "E", strg "F", strg "G", strg "H", strg "I", strg "J", strg "K", strg "L", strg "M", strg "N", strg "O", strg "P", strg "Q", strg "R", strg "S", strg "T", strg "U", strg "V", strg "W", strg "X", strg "Y", strg "Z", strg "0", strg "1", strg "2", strg "3", strg "4", strg "5", strg "6", strg "7", strg "8", strg "9"]) I O CS,
-    concat CS E.
+    some alnumchar I O CS,
+    not (alnumchar O _ _),
+    concat CS E,
+    not (keyword E).
 
 type prec0 parser tm.
 prec0 I O E :-
-    boundvar N E,
-    str N I O 0.
+    alphanum I O N,
+    boundvar N E.
 prec0 I O X :-
     choose
         [ seq (str "*") (pure typ)
@@ -108,6 +122,7 @@ prec1 I O (if C X Y) :-
     space1 I2 I3 0,
     prec0 I3 I4 C,
     space1 I4 I5 0,
+    % dprint ["IF", I5],
     prec0 I5 I6 X,
     space1 I6 I7 0,
     prec0 I7 I8 Y.
@@ -181,3 +196,37 @@ prec3 I O E :-
     str "exi" I I2 0,
     space I2 I3 0,
     tbind exi I3 O E.
+
+type findnames parser (list string).
+findnames I O (ID :: IDS) :-
+    alphanum I I2 ID,
+    space1 I2 I3 0,
+    str ":=" I3 I4 0,
+    !,
+    findnames I4 O IDS.
+findnames I O IDS :-
+    anychar I I2 _,
+    findnames I2 O IDS.
+findnames "" "" [].
+
+type decls parser tm.
+decls "" "" tt.
+decls I O (gen E R) :-
+    alphanum I I2 ID,
+    space1 I2 I3 0,
+    str ":=" I3 I4 0,
+    space1 I4 I5 0,
+    prec3 I5 I6 E,
+    space I6 I7 0,
+    decls I7 O R.
+
+type fixes list string -> parser tm.
+fixes [] I O E :-
+    decls I O E.
+fixes (ID :: IDS) I O (fix E) :-
+    pi x\ boundvar ID x => fixes IDS I O (E x).
+
+type toplevel parser tm.
+toplevel I O E :-
+    findnames I _ IDS,
+    fixes IDS I O E.

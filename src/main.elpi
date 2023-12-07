@@ -1,0 +1,18 @@
+type readalllines in_stream -> string -> o.
+readalllines S "" :-
+    eof S,
+    !.
+readalllines S C :-
+    input_line S L,
+    readalllines S R,
+    C is (L ^ "\n" ^ R).
+
+type readfile string -> string -> o.
+readfile F C :-
+    open_in F S,
+    readalllines S C.
+
+type runfile string -> tm -> o.
+runfile F E :-
+    readfile F S,
+    runparse toplevel S E.
