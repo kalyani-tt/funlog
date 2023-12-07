@@ -1,0 +1,183 @@
+% Combinators
+
+type splitstring int -> string -> string -> string -> o.
+splitstring 0 I "" I.
+splitstring N I L R :-
+    not (N = 0; I = ""),
+    C is substring I 0 1,
+    I2 is substring I 1 (size I - 1),
+    N2 is N - 1,
+    splitstring N2 I2 L1 R,
+    L is (C ^ L1).
+
+% typeabbrev (parser A) string -> string -> A -> type.
+
+type str string -> parser int.
+str S I O 0 :-
+    splitstring {calc (size S)} I S O.
+
+type strg string -> parser string.
+strg S I O S :-
+    splitstring {calc (size S)} I S O.
+
+type pure A -> parser A.
+pure X I I X.
+
+type choose list (parser A) -> parser A.
+choose (P :: _) I O X :- P I O X.
+choose (_ :: PS) I O X :- choose PS I O X.
+
+type many parser A -> parser (list A).
+many P I O (X :: XS) :-
+    P I I2 X,
+    many P I2 O XS.
+many P I I [].
+
+some P I O (X :: XS) :-
+    P I I2 X,
+    many P I2 O XS.
+
+type bind parser A -> (A -> parser B) -> parser B.
+bind P Q I O Y :-
+    P I I2 X,
+    Q X I2 O Y.
+
+type seq parser A -> parser B -> parser B.
+seq P Q I O Y :- bind P (x\ Q) I O Y.
+
+type space parser int.
+space I O 0 :-
+    many (choose [str " ", str "\n"]) I O _.
+
+type space1 parser int.
+space1 I O 0 :-
+    some (choose [str " ", str "\n"]) I O _.
+
+type between string -> parser A -> string -> parser A.
+between L P R I O E :-
+    str L I I2 0,
+    space I2 I3 0,
+    P I3 I4 E,
+    space I4 I5 0,
+    str R I5 O 0.
+
+type runparse parser A -> string -> A -> o.
+runparse P I E :-
+    P I O E,
+    O = "".
+
+% Term parser
+
+type boundvar string -> tm -> o.
+
+concat [] "".
+concat (C :: CS) R :-
+    concat CS S,
+    R is C ^ S.
+
+type alphanum parser string.
+alphanum I O E :-
+    some (choose [strg "a", strg "b", strg "c", strg "d", strg "e", strg "f", strg "g", strg "h", strg "i", strg "j", strg "k", strg "l", strg "m", strg "n", strg "o", strg "p", strg "q", strg "r", strg "s", strg "t", strg "u", strg "v", strg "w", strg "x", strg "y", strg "z", strg "A", strg "B", strg "C", strg "D", strg "E", strg "F", strg "G", strg "H", strg "I", strg "J", strg "K", strg "L", strg "M", strg "N", strg "O", strg "P", strg "Q", strg "R", strg "S", strg "T", strg "U", strg "V", strg "W", strg "X", strg "Y", strg "Z", strg "0", strg "1", strg "2", strg "3", strg "4", strg "5", strg "6", strg "7", strg "8", strg "9"]) I O CS,
+    concat CS E.
+
+type prec0 parser tm.
+prec0 I O E :-
+    boundvar N E,
+    str N I O 0.
+prec0 I O X :-
+    choose
+        [ seq (str "*") (pure typ)
+        , seq (str "true") (pure tt)
+        , seq (str "false") (pure ff)
+        , seq (str "bool") (pure two)
+        , between "(" prec2 ")" ]
+        I O X.
+prec0 I O (neg E) :-
+    str "!" I I2 0,
+    space I2 I3 0,
+    prec0 I3 O E.
+
+type foldr list A -> (B -> A -> B) -> B -> B -> o.
+foldr [] _ R R.
+foldr (X :: XS) F I R :-
+    foldr XS F (F I X) R.
+
+type prec1 parser tm.
+prec1 I O (if C X Y) :-
+    str "if" I I2 0,
+    space1 I2 I3 0,
+    prec0 I3 I4 C,
+    space1 I4 I5 0,
+    prec0 I5 I6 X,
+    space1 I6 I7 0,
+    prec0 I7 I8 Y.
+prec1 I O E :-
+    prec0 I I2 F,
+    many (seq space1 prec0) I2 O As,
+    foldr As app F E.
+
+type prec2 parser tm.
+prec2 I O (eql X Y) :-
+    prec1 I I2 X,
+    space I2 I3 0,
+    str "==" I3 I4 0,
+    space I4 I5 0,
+    prec1 I5 O Y.
+prec2 I O (neq X Y) :-
+    prec1 I I2 X,
+    space I2 I3 0,
+    str "!=" I3 I4 0,
+    space I4 I5 0,
+    prec1 I5 O Y.
+prec2 I O E :- prec1 I O E.
+
+type lams parser tm.
+lams I O E :-
+    str "." I I2 0,
+    space I2 I3 0,
+    prec3 I3 O E.
+lams I O (lam F) :-
+    alphanum I I2 ID,
+    space I2 I3 0,
+    (pi x\ boundvar ID x => lams I3 O (F x)).
+
+type tbind (tm -> (tm -> tm) -> tm) -> parser tm.
+tbind _ I O E :-
+    str "." I I2 0,
+    space I2 I3 0,
+    prec3 I3 O E.
+tbind T I O (T A F) :-
+    str "(" I I2 0,
+    space I2 I3 0,
+    alphanum I3 I4 ID,
+    space I4 I5 0,
+    str ":" I5 I6 0,
+    space I6 I7 0,
+    prec3 I7 I8 A,
+    space I8 I9 0,
+    str ")" I9 I10 0,
+    space I10 I11 0,
+    (pi x\ boundvar ID x => tbind T I11 O (F x)).
+
+type prec3 parser tm.
+prec3 I O E :- prec2 I O E.
+prec3 I O (fix F) :-
+    str "fix" I I2 0,
+    space1 I2 I3 0,
+    alphanum I3 I4 ID,
+    space I4 I5 0,
+    str "." I5 I6 0,
+    space I6 I7 0,
+    (pi r\ boundvar ID r => prec3 I7 O (F r)).
+prec3 I O E :-
+    str "lam" I I2 0,
+    space1 I2 I3 0,
+    lams I3 O E.
+prec3 I O E :-
+    str "for" I I2 0,
+    space I2 I3 0,
+    tbind uni I3 O E.
+prec3 I O E :-
+    str "exi" I I2 0,
+    space I2 I3 0,
+    tbind exi I3 O E.

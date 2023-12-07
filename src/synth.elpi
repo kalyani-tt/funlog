@@ -1,5 +1,27 @@
-accumulate "syntax".
-accumulate "sem".
+% Syntax
+
+kind tm type.
+
+type typ tm.
+type uni tm -> (tm -> tm) -> tm.
+type lam (tm -> tm) -> tm.
+type app tm -> tm -> tm.
+type exi tm -> (tm -> tm) -> tm.
+type gen tm -> tm -> tm.
+type pr1 tm -> tm.
+type pr2 tm -> tm.
+type two tm.
+type tt tm.
+type ff tm.
+type if tm -> tm -> tm.
+type neg tm -> tm.
+type eql tm -> tm -> tm.
+type rfl tm -> tm -> tm.
+type neq tm -> tm -> tm.
+type nrf tm -> tm -> tm.
+type fix (tm -> tm) -> tm.
+
+% Interpreter
 
 type synth tm -> tm -> o.
 synth (uni A B) (lam E) :-
@@ -12,10 +34,27 @@ synth two ff.
 synth (eql X X) (rfl X X).
 synth (neq X Y) (nrf X Y) :-
     not (X = Y).
+synth (if tt A B) X :-
+    synth A X.
+synth (if ff A B) Y :-
+    synth B Y.
 synth (if C A B) (if C X Y) :-
+    not (C = tt; C = ff),
     synth two C,
     synth A X,
     synth B Y.
-synth A E :-
-    step A B,
-    synth B E.
+synth (fix F) E :-
+    synth (F (fix F)) E.
+synth (neg (uni A B)) E :-
+    synth (exi A (x\ neg (B x))).
+synth (neg (exi A B)) E :-
+    synth (uni A (x\ neg (B x))).
+synth (neg (eql X Y)) E :-
+    synth (neq X Y) E.
+synth (neg (neq X Y)) E :-
+    synth (eql X Y) E.
+
+type run string -> tm -> o.
+run S E :-
+    runparse prec3 S A,
+    synth A E.
