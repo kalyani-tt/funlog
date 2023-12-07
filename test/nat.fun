@@ -1,3 +1,7 @@
-unit := for(a : *)(x : a). a
+Unit := for(A : Type)(x : A). A
+unit := lam A x. x
 
-nat := exi(b : bool). if b nat unit
+Nat := exi(b : Bool). if b Nat Unit
+zero := pair false unit
+
+main := exi(n : Nat). n == zero

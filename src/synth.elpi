@@ -21,39 +21,55 @@ type neq tm -> tm -> tm.
 type nrf tm -> tm -> tm.
 type fix (tm -> tm) -> tm.
 
+% Evaluation
+
+type step tm -> tm -> o.
+step (app F A) (app G A) :-
+    step F G.
+step (app (lam F) A) (F A).
+step (pr1 A) (pr1 B) :-
+    step A B.
+step (pr1 (gen A B)) A.
+step (pr2 A) (pr2 B) :-
+    step A B.
+step (pr2 (gen A B)) B.
+step (if C A B) (if T A B) :-
+    step C T.
+step (if tt A B) A.
+step (if ff A B) B.
+step (neg (uni A B)) (exi A (x\ neg (B x))).
+step (neg (exi A B)) (uni A (x\ neg (B x))).
+step (neg (eql X Y)) (neq X Y).
+step (neg (neq X Y)) (eql X Y).
+step (fix F) (F (fix F)).
+
+type norm tm -> tm -> o.
+norm A C :-
+    step A B,
+    !,
+    norm B C.
+norm A A.
+
 % Interpreter
 
 type synth tm -> tm -> o.
+synth A E :-
+    step A B,
+    !,
+    synth B E.
 synth (uni A B) (lam E) :-
     pi x\ synth A x => synth (B x) (E x).
 synth (exi A B) (gen X Y) :-
-    synth (B X) Y,
-    synth A X.
+    synth (B X) Y.
+    % synth A X.
 synth two tt.
 synth two ff.
-synth (eql X X) (rfl X X).
+synth (eql X Y) (rfl X Y) :-
+    X = Y.
 synth (neq X Y) (nrf X Y) :-
     not (X = Y).
-synth (if tt A B) X :-
-    synth A X.
-synth (if ff A B) Y :-
-    synth B Y.
 synth (if C A B) (if C X Y) :-
     not (C = tt; C = ff),
     synth two C,
     synth A X,
     synth B Y.
-synth (fix F) E :-
-    synth (F (fix F)) E.
-synth (neg (uni A B)) E :-
-    synth (exi A (x\ neg (B x))).
-synth (neg (exi A B)) E :-
-    synth (uni A (x\ neg (B x))).
-synth (neg (eql X Y)) E :-
-    synth (neq X Y) E.
-synth (neg (neq X Y)) E :-
-    synth (eql X Y) E.
-synth (pr1 (gen A B)) X :-
-    synth A X.
-synth (pr2 (gen A B)) Y :-
-    synth (B A) Y.

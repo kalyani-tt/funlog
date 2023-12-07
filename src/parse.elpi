@@ -85,7 +85,6 @@ type keyword string -> o.
 keyword "for".
 keyword "exi".
 keyword "lam".
-keyword "if".
 
 type alphanum parser string.
 alphanum I O E :-
@@ -94,18 +93,20 @@ alphanum I O E :-
     concat CS E,
     not (keyword E).
 
+pvar "if" (lam t\ lam a\ lam b\ if t a b).
+pvar "pair" (lam a\ lam b\ gen a b).
+pvar "Bool" two.
+pvar "Type" typ.
+pvar "true" tt.
+pvar "false" ff.
+pvar N E :- boundvar N E.
+
 type prec0 parser tm.
 prec0 I O E :-
     alphanum I O N,
-    boundvar N E.
+    pvar N E.
 prec0 I O X :-
-    choose
-        [ seq (str "*") (pure typ)
-        , seq (str "true") (pure tt)
-        , seq (str "false") (pure ff)
-        , seq (str "bool") (pure two)
-        , between "(" prec2 ")" ]
-        I O X.
+    between "(" prec2 ")" I O X.
 prec0 I O (neg E) :-
     str "!" I I2 0,
     space I2 I3 0,
@@ -117,15 +118,6 @@ foldr (X :: XS) F I R :-
     foldr XS F (F I X) R.
 
 type prec1 parser tm.
-prec1 I O (if C X Y) :-
-    str "if" I I2 0,
-    space1 I2 I3 0,
-    prec0 I3 I4 C,
-    space1 I4 I5 0,
-    % dprint ["IF", I5],
-    prec0 I5 I6 X,
-    space1 I6 I7 0,
-    prec0 I7 I8 Y.
 prec1 I O E :-
     prec0 I I2 F,
     many (seq space1 prec0) I2 O As,
@@ -220,13 +212,19 @@ decls I O (gen E R) :-
     space I6 I7 0,
     decls I7 O R.
 
-type fixes list string -> parser tm.
-fixes [] I O E :-
+type fixes tm -> list string -> parser tm.
+fixes Rec [] I O E :-
     decls I O E.
-fixes (ID :: IDS) I O (fix E) :-
-    pi x\ boundvar ID x => fixes IDS I O (E x).
+fixes Rec (ID :: IDS) I O E :-
+    boundvar ID (pr1 Rec) => fixes (pr2 Rec) IDS I O E.
+
+type findmain list string -> (tm -> tm) -> o.
+findmain ("main" :: _) pr1.
+findmain (_ :: IDS) (x\ Pr (pr2 x)) :-
+    findmain IDS Pr.
 
 type toplevel parser tm.
-toplevel I O E :-
+toplevel I O (Pr (fix E)) :-
     findnames I _ IDS,
-    fixes IDS I O E.
+    findmain IDS Pr,
+    pi rec\ fixes rec IDS I O (E rec).

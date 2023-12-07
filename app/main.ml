@@ -27,4 +27,4 @@ let _ =
         with API.Parse.ParseError(loc, msg) -> Format.eprintf "%a@;%s\n" API.Ast.Loc.pp loc msg; exit 1 in
     let query = API.Compile.query prog query_ast in
     let exec = API.Compile.optimize query in
-    API.Execute.loop ~delay_outside_fragment:true ~more ~pp:print_solution exec
+    API.Execute.loop ~delay_outside_fragment:false ~more ~pp:print_solution exec

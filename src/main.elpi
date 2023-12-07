@@ -15,4 +15,8 @@ readfile F C :-
 type runfile string -> tm -> o.
 runfile F E :-
     readfile F S,
-    runparse toplevel S E.
+    runparse toplevel S A,
+    print "Parsed successfully:",
+    print {term_to_string A},
+    synth A R,
+    norm R E.
