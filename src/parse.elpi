@@ -93,13 +93,16 @@ alphanum I O E :-
     concat CS E,
     not (keyword E).
 
-pvar "if" (lam t\ lam a\ lam b\ if t a b).
-pvar "pair" (lam a\ lam b\ gen a b).
-pvar "Bool" two.
-pvar "Type" typ.
-pvar "true" tt.
-pvar "false" ff.
-pvar N E :- boundvar N E.
+pvar "if" (lam t\ lam a\ lam b\ if t a b) :- !.
+pvar "pair" (lam a\ lam b\ gen a b) :- !.
+pvar "Bool" two :- !.
+pvar "Type" typ :- !.
+pvar "true" tt :- !.
+pvar "false" ff :- !.
+pvar N E :-
+    boundvar N E,
+    !.
+pvar N _ :- fatal-error ("Unknown variable " ^ N).
 
 type prec0 parser tm.
 prec0 I O E :-

@@ -42,6 +42,14 @@ step (neg (exi A B)) (uni A (x\ neg (B x))).
 step (neg (eql X Y)) (neq X Y).
 step (neg (neq X Y)) (eql X Y).
 step (fix F) (F (fix F)).
+step (eql A C) (eql B C) :-
+    step A B.
+step (eql C A) (eql C B) :-
+    step A B.
+step (rfl A C) (rfl B C) :-
+    step A B.
+step (rfl C A) (rfl C B) :-
+    step A B.
 
 type norm tm -> tm -> o.
 norm A C :-
